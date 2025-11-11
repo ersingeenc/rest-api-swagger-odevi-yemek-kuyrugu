@@ -1,0 +1,139 @@
+openapi: 3.0.0
+info:
+  title: Yemek Siparişi Akışı API'si (Simülasyon)
+  description: |
+    Müşteri tarafından bir siparişin oluşturulması, ödeme akışı, ve siparişin restoran onayı için asenkron kuyruğa gönderilmesi sürecini yöneten ana Rest Servisi.
+  version: 1.0.0
+servers:
+  - url: http://localhost:5000
+    description: Ana Geliştirme Sunucusu
+
+paths:
+  /order:
+    post:
+      summary: Yeni bir sipariş oluşturur ve ödeme akışını başlatır.
+      description: |
+        Diyagramdaki **Müşteri -> Uygulama** ve **Uygulama -> Ödeme** akışlarını içerir. Ödeme başarılı olursa, sipariş asenkron olarak işlenmek üzere kuyruğa eklenir.
+      tags:
+        - Sipariş
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - user_id
+                - restaurant_id
+                - amount
+                - items
+              properties:
+                user_id:
+                  type: integer
+                  description: Siparişi veren müşterinin ID'si.
+                  example: 101
+                restaurant_id:
+                  type: integer
+                  description: Siparişin verildiği restoranın ID'si.
+                  example: 505
+                amount:
+                  type: number
+                  format: float
+                  description: Ödenecek toplam tutar.
+                  example: 150.75
+                items:
+                  type: array
+                  items:
+                    type: string
+                  description: Siparişteki ürünlerin listesi.
+                  example: ["Hamburger", "Kola", "Patates"]
+                card_info:
+                  type: string
+                  description: Ödeme için gerekli kart bilgisi (simülasyonda herhangi bir string olabilir).
+                  example: "4111********1111"
+
+      responses:
+        '202':
+          description: Sipariş başarıyla alındı ve ödeme başarılı oldu. Sipariş asenkron işleme (kuyruk) için kabul edildi.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "Siparişiniz başarıyla alındı ve işleniyor."
+                  order_id:
+                    type: string
+                    example: "ORD-1701112223-456"
+                  status:
+                    type: string
+                    description: Siparişin ilk durumu.
+                    example: "PAYMENT_SUCCESS"
+                  transaction_id:
+                    type: string
+                    example: "TX-1701112223"
+                  next_step:
+                    type: string
+                    example: "Restoran onayı bekleniyor (arka planda işleniyor)."
+
+        '400':
+          description: Ödeme başarısız oldu veya zorunlu alanlar eksik.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "Ödeme başarısız."
+                  reason:
+                    type: string
+                    example: "Kredi kartı reddedildi."
+
+  /order/{order_id}:
+    get:
+      summary: Belirli bir siparişin mevcut durumunu sorgular.
+      description: Siparişin **PAYMENT_SUCCESS**, **CONFIRMED**, veya **REJECTED** gibi son durumunu gösterir.
+      tags:
+        - Sipariş
+      parameters:
+        - in: path
+          name: order_id
+          schema:
+            type: string
+          required: true
+          description: Sorgulanacak siparişin benzersiz ID'si.
+          example: ORD-1701112223-456
+      responses:
+        '200':
+          description: Sipariş durumu başarıyla getirildi.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: string
+                    example: "ORD-1701112223-456"
+                  status:
+                    type: string
+                    example: "CONFIRMED"
+                  items:
+                    type: array
+                    items:
+                      type: string
+                    example: ["Hamburger", "Kola"]
+                  user_id:
+                    type: integer
+                    example: 101
+        '404':
+          description: Belirtilen ID'ye sahip sipariş bulunamadı.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "Sipariş bulunamadı."
