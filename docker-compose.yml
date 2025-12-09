@@ -1,22 +1,31 @@
-# docker-compose.yml
-
 version: '3.8'
 
 services:
-
-  order-api:
-
-    build: .
-
-    container_name: yemek-siparis-api
-    
-
-    ports:
-      - "5000:5000"
-    
- 
+  backend:
+    build: 
+      context: .
+      dockerfile: Dockerfile
+    container_name: order-api-backend
     environment:
       - FLASK_APP=app.py
       - FLASK_ENV=development
+    ports:
+      - "5000:5000"
+    networks:
+      - app-network
 
-
+  frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile.frontend
+    container_name: order-api-frontend
+    ports:
+      - "3000:80" 
+    depends_on:
+      - backend
+    networks:
+      - app-network
+      
+networks:
+  app-network:
+    driver: bridge
