@@ -1,14 +1,15 @@
-version: '3.8'
-
 services:
   backend:
-    build: 
+    build:
       context: .
       dockerfile: Dockerfile
     container_name: order-api-backend
     environment:
       - FLASK_APP=app.py
       - FLASK_ENV=development
+      # Docker içindeki backend, senin local PostgreSQL'ine bağlanacaksa:
+      # host.docker.internal kullanıyoruz.
+      - DATABASE_URL=postgresql+psycopg2://postgres:183729@host.docker.internal:5432/ordersdb
     ports:
       - "5000:5000"
     networks:
@@ -20,12 +21,12 @@ services:
       dockerfile: Dockerfile.frontend
     container_name: order-api-frontend
     ports:
-      - "3000:80" 
+      - "3000:8080"
     depends_on:
       - backend
     networks:
       - app-network
-      
+
 networks:
   app-network:
     driver: bridge
