@@ -4,11 +4,6 @@ Bu depo, bir yemek siparişi uygulamasının temel sipariş oluşturma ve durum 
 
 ##  Gereksinimler
 
-- Docker ve Docker Compose
-
-##  Docker Kullanımı
-
-API'yi Docker konteyneri içinde çalıştırmak ve 5000 portunda yayınlamak için aşağıdaki komutu kullanabilirsiniz.
 
 
-docker build -t yemek-siparis-api-image .
+
