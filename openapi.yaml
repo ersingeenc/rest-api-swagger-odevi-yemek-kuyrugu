@@ -405,3 +405,61 @@ paths:
           description: Kullanıcı restoran sahibi değil veya sipariş başka restorana ait
         '404':
           description: Kullanıcı veya sipariş bulunamadı
+
+  /restaurant/queue/estimate:
+    get:
+      tags: [Restaurant]
+      summary: Restoran kuyruğu için tahmini bekleme süresi
+      description: |
+        Belirli bir restoran için aktif sipariş sayısını veritabanından sayar ve
+        tahmini bekleme süresini hesaplar. Hesaplama MCP tool fonksiyonu kullanır.
+      parameters:
+        - in: query
+          name: restaurant_user_id
+          required: true
+          schema:
+            type: integer
+          description: Restoran sahibi kullanıcı ID'si
+        - in: query
+          name: ort_hazirlama_suresi_dk
+          required: false
+          schema:
+            type: integer
+          description: Bir siparişin ortalama hazırlanma süresi (dakika)
+        - in: query
+          name: paralel_mutfak_sayisi
+          required: false
+          schema:
+            type: integer
+          description: Aynı anda aktif çalışan mutfak/hat sayısı
+      responses:
+        '200':
+          description: Tahmini bekleme süresi döner
+        '400':
+          description: Parametre hatası
+        '403':
+          description: Yetki hatası
+        '404':
+          description: Kullanıcı veya restoran bulunamadı
+
+  /menu/suggestion:
+    get:
+      tags:
+        - Menu
+      summary: TheMealDB üzerinden menü önerisi al
+      description: |
+        Verilen ana malzemeye göre (chicken, beef vb.) TheMealDB public API'sinden
+        bir yemek önerisi döner. İş mantığı MCP tool fonksiyonunu kullanır.
+      parameters:
+        - in: query
+          name: ana_malzeme
+          required: false
+          schema:
+            type: string
+          description: "Örn. chicken, beef, pasta (varsayılan: chicken)"
+      responses:
+        '200':
+          description: Önerilen yemek bilgisi döner
+        '500':
+          description: Dış API veya sunucu hatası
+
