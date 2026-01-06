@@ -9,6 +9,8 @@ from functools import wraps
 import os
 from datetime import datetime
 
+from mcp.tools import tahmini_bekleme_suresi, onerilen_menu
+
 app = Flask(__name__)
 CORS(app)
 
@@ -546,6 +548,90 @@ def reject_order_restaurant():
         "status": order.status,
         "reason": reason
     }), 200
+
+
+# =========================================
+#  MCP TOOL FONKSİYONLARINI KULLANAN UÇLAR
+# =========================================
+
+@app.route('/restaurant/queue/estimate', methods=['GET'])
+def estimate_queue_wait_time():
+    """
+    Belirli bir restoran için aktif sipariş sayısını veritabanından sayar
+    ve MCP içindeki tahmini_bekleme_suresi fonksiyonunu kullanarak
+    tahmini bekleme süresini döner.
+
+    Query parametreleri:
+      - restaurant_user_id: Restoran sahibi kullanıcının ID'si (zorunlu)
+      - ort_hazirlama_suresi_dk: Opsiyonel, varsayılan 8
+      - paralel_mutfak_sayisi: Opsiyonel, varsayılan 1
+    """
+    restaurant_user_id = request.args.get('restaurant_user_id')
+    if restaurant_user_id is None:
+        return jsonify({"message": "restaurant_user_id query param zorunludur."}), 400
+
+    try:
+        restaurant_user_id_int = int(restaurant_user_id)
+    except ValueError:
+        return jsonify({"message": "restaurant_user_id sayısal olmalıdır."}), 400
+
+    user = User.query.get(restaurant_user_id_int)
+    if not user:
+        return jsonify({"message": "Belirtilen restaurant_user_id için kullanıcı bulunamadı."}), 404
+
+    if user.role != ROLE_RESTAURANT:
+        return jsonify({"message": "Bu kullanıcı restoran sahibi değil (role=RESTAURANT olmalı)."}), 403
+
+    if user.restaurant_id is None:
+        return jsonify({"message": "Bu restoran kullanıcısının restaurant_id bilgisi yok."}), 400
+
+    # Aktif siparişleri say: sonlandırılmış olmayanlar
+    aktif_siparis_sayisi = Order.query.filter(
+        Order.restaurant_id == user.restaurant_id,
+        Order.status.notin_(["CANCELLED", "REJECTED", "CONFIRMED"])
+    ).count()
+
+    # Opsiyonel parametreleri oku
+    ort_sure_raw = request.args.get('ort_hazirlama_suresi_dk', '8')
+    paralel_raw = request.args.get('paralel_mutfak_sayisi', '1')
+
+    try:
+        ort_hazirlama_suresi_dk = int(ort_sure_raw)
+        paralel_mutfak_sayisi = int(paralel_raw)
+    except ValueError:
+        return jsonify({"message": "ort_hazirlama_suresi_dk ve paralel_mutfak_sayisi tamsayı olmalıdır."}), 400
+
+    # MCP tool fonksiyonunu doğrudan Python fonksiyonu gibi kullanıyoruz
+    sonuc = tahmini_bekleme_suresi(
+        aktif_siparis_sayisi=aktif_siparis_sayisi,
+        ort_hazirlama_suresi_dk=ort_hazirlama_suresi_dk,
+        paralel_mutfak_sayisi=paralel_mutfak_sayisi
+    )
+
+    return jsonify({
+        "restaurant_id": user.restaurant_id,
+        "restaurant_user_id": user.id,
+        "aktif_siparis_sayisi": aktif_siparis_sayisi,
+        "hesaplama": sonuc
+    }), 200
+
+
+@app.route('/menu/suggestion', methods=['GET'])
+def menu_suggestion():
+    """
+    MCP içindeki onerilen_menu tool fonksiyonunu kullanarak
+    TheMealDB public API'sinden günün menüsü / önerilen yemek bilgisi döner.
+
+    Query parametreleri:
+      - ana_malzeme: Örn. chicken, beef, pasta (varsayılan: chicken)
+    """
+    ana_malzeme = request.args.get('ana_malzeme', 'chicken')
+    sonuc = onerilen_menu(ana_malzeme)
+
+    # MCP fonksiyonu zaten JSON uyumlu dict döndürüyor,
+    # burada sadece HTTP cevabına sarıyoruz.
+    return jsonify(sonuc), 200
+
 
 
 if __name__ == '__main__':
