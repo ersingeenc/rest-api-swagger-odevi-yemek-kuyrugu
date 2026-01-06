@@ -1,0 +1,5 @@
+FROM swaggerapi/swagger-ui
+
+COPY openapi.yaml /usr/share/nginx/html/openapi.yaml
+
+ENV API_URL=/openapi.yaml
